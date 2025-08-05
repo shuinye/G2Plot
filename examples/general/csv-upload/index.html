@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CSV to Chart</title>
+  <!-- G2Plot library -->
+  <script src="https://unpkg.com/@antv/g2plot@1.0.2/dist/g2plot.min.js"></script>
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #container { width: 600px; height: 400px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h2>Upload CSV and Visualize</h2>
+  <input type="file" id="fileInput" accept=".csv" />
+  <button id="downloadBtn" disabled>Download SVG</button>
+  <div id="container"></div>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const downloadBtn = document.getElementById('downloadBtn');
+    let plot;
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        dynamicTyping: true,
+        complete: (results) => {
+          const data = results.data.filter((row) => Object.keys(row).length >= 2);
+          if (!data.length) return;
+          const fields = Object.keys(data[0]);
+
+          if (plot) {
+            plot.destroy();
+          }
+
+          plot = new G2Plot.Line('container', {
+            data,
+            xField: fields[0],
+            yField: fields[1],
+            renderer: 'svg',
+            smooth: true,
+          });
+          plot.render();
+          downloadBtn.disabled = false;
+        },
+      });
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (!plot) return;
+      const svg = plot.getCanvas().get('el');
+      const serializer = new XMLSerializer();
+      const source = serializer.serializeToString(svg);
+      const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'chart.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
